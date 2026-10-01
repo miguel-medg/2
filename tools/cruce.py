@@ -44,7 +44,23 @@ COUNTRY_TOKENS = {
     "nic": "ni", "ni": "ni", "rd": "do",
     "ecuador": "ec", "espana": "es",
 }
-PROPIOS = re.compile(r"cinema vip|alquiler|24/7|lgvip|eventos|cinema\+", re.I)
+PROPIOS = re.compile(
+    r"cinema vip|alquiler|24/7|lgvip|eventos|cinema\+|^netflix|amazon prime", re.I)
+
+# Paises donde es mas probable que este el canal que ve el usuario (orden de prioridad)
+PRIORIDAD = ["mx", "us", "co", "ar", "pe", "cl", "uy", "py", "bo", "ec",
+             "gt", "sv", "hn", "ni", "cr", "pa", "do", "pr", "es"]
+
+# Nombre limpio de Xuper -> nombre limpio con el que buscar en iptv-org
+ALIAS = {
+    "azteca 1": "azteca uno",
+    "chv": "chilevision",
+    "canal de las estrella": "las estrellas",
+    "cnn espanol": "cnn en espanol",
+    "imagen": "imagen television",
+    "a mas plus": "a plus",
+    "warner": "warner channel",
+}
 
 
 def get_json(name):
@@ -119,6 +135,7 @@ def main():
     rows = []
     for name, num in xuper:
         core, hint = norm(name)
+        core = ALIAS.get(core, core)
         if PROPIOS.search(name):
             rows.append([name, num, "propio", "", "", 0, ""])
             continue
@@ -140,9 +157,12 @@ def main():
             cid, oname = meta[idx]
             cc = country_of(cid)
             adj = score
+            if cc in PRIORIDAD:
+                adj += 3 - 0.25 * PRIORIDAD.index(cc)
+            else:
+                adj -= 10
             if hint:
                 adj += 6 if cc == hint else -4
-            adj = min(100, adj)
             if best is None or adj > best[0]:
                 best = (adj, cid, oname)
 
@@ -157,7 +177,7 @@ def main():
         if status != "sin_guia":
             sites = ";".join(sorted({g.get("site", "") for g in by_channel[cid]}))
         rows.append([name, num, status, cid if status != "sin_guia" else "",
-                     oname if status != "sin_guia" else "", round(score, 1), sites])
+                     oname if status != "sin_guia" else "", round(min(score, 100), 1), sites])
 
     os.makedirs("out", exist_ok=True)
     with open("out/reporte_canales.csv", "w", newline="", encoding="utf-8-sig") as f:
