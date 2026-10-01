@@ -47,6 +47,7 @@ class GuideActivity : Activity() {
     private var allRows: List<Row> = emptyList()
     private var shown: List<Row> = emptyList()
     private var onlyWithData = true
+    private var scale = 1.3f // factor de tamano del texto (se guarda)
     private val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 
     private lateinit var status: TextView
@@ -64,6 +65,7 @@ class GuideActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        scale = getSharedPreferences("guia", MODE_PRIVATE).getFloat("scale", 1.3f)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -72,27 +74,41 @@ class GuideActivity : Activity() {
         }
 
         status = TextView(this).apply {
-            textSize = 16f
+            textSize = 18f * scale
             setTextColor(Color.LTGRAY)
             text = "Cargando guía…"
         }
 
         refreshBtn = Button(this).apply {
             text = "Actualizar guía"
+            textSize = 20f
             setOnClickListener { load(true) }
         }
         filterBtn = Button(this).apply {
             text = "Mostrar todos los canales"
+            textSize = 20f
             setOnClickListener {
                 onlyWithData = !onlyWithData
                 text = if (onlyWithData) "Mostrar todos los canales" else "Solo canales con datos"
                 applyFilter()
             }
         }
+        val smallerBtn = Button(this).apply {
+            text = "Texto −"
+            textSize = 20f
+            setOnClickListener { changeScale(-0.2f) }
+        }
+        val biggerBtn = Button(this).apply {
+            text = "Texto +"
+            textSize = 20f
+            setOnClickListener { changeScale(0.2f) }
+        }
         val buttons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(refreshBtn)
             addView(filterBtn)
+            addView(smallerBtn)
+            addView(biggerBtn)
         }
 
         adapter = RowAdapter()
@@ -123,6 +139,13 @@ class GuideActivity : Activity() {
     override fun onPause() {
         handler.removeCallbacks(tick)
         super.onPause()
+    }
+
+    private fun changeScale(d: Float) {
+        scale = (scale + d).coerceIn(0.8f, 2.4f)
+        getSharedPreferences("guia", MODE_PRIVATE).edit().putFloat("scale", scale).apply()
+        status.textSize = 18f * scale
+        adapter.notifyDataSetChanged()
     }
 
     // ---------- carga de datos ----------
@@ -268,16 +291,16 @@ class GuideActivity : Activity() {
 
             val box = LinearLayout(this@GuideActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(24, 14, 24, 14)
+                setPadding(24, 20, 24, 20)
             }
             box.addView(TextView(this@GuideActivity).apply {
                 text = r.name
-                textSize = 20f
+                textSize = 26f * scale
                 setTypeface(typeface, Typeface.BOLD)
                 setTextColor(Color.WHITE)
             })
             box.addView(TextView(this@GuideActivity).apply {
-                textSize = 17f
+                textSize = 22f * scale
                 if (cur != null) {
                     text = "Ahora  ${timeFmt.format(Date(cur.start))}–${timeFmt.format(Date(cur.stop))}  ${cur.title}"
                     setTextColor(0xFF7CE38B.toInt())
@@ -288,7 +311,7 @@ class GuideActivity : Activity() {
             })
             if (nxt != null) {
                 box.addView(TextView(this@GuideActivity).apply {
-                    textSize = 16f
+                    textSize = 20f * scale
                     text = "Sigue  ${timeFmt.format(Date(nxt.start))}  ${nxt.title}"
                     setTextColor(Color.LTGRAY)
                 })
