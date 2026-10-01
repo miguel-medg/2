@@ -3,6 +3,7 @@ package com.miguel.epgprobe
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -10,26 +11,37 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.LinearLayout
 import android.widget.TextView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Lee solo Xuper TV (com.lite.fczx):
  *  - mChannelName / mTextChannelIndex: canal en reproduccion
  *  - mTvChannelName: nombres de la lista lateral de canales
- * Guarda todos los nombres vistos y muestra un recuadro con el canal actual.
+ * Guarda los nombres vistos y muestra un cartel grande con el canal actual,
+ * el programa que va ahora y el que sigue (si el canal tiene guia).
  */
 class ProbeService : AccessibilityService() {
 
     companion object {
         const val XUPER_PKG = "com.lite.fczx"
+        const val SHOW_MS = 8000L
     }
 
     private val handler = Handler(Looper.getMainLooper())
-    private var overlay: TextView? = null
+    private val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+    private var box: LinearLayout? = null
+    private var tvChannel: TextView? = null
+    private var tvNow: TextView? = null
+    private var tvNext: TextView? = null
     private var lastSignature = ""
 
     private val scanRunnable = Runnable { scanScreen() }
-    private val hideRunnable = Runnable { overlay?.visibility = View.GONE }
+    private val hideRunnable = Runnable { box?.visibility = View.GONE }
 
     private class Found {
         var name: String? = null
@@ -47,13 +59,13 @@ class ProbeService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        overlay?.let {
+        box?.let {
             try {
                 (getSystemService(WINDOW_SERVICE) as WindowManager).removeView(it)
             } catch (_: Exception) {
             }
         }
-        overlay = null
+        box = null
         super.onDestroy()
     }
 
@@ -74,13 +86,47 @@ class ProbeService : AccessibilityService() {
         if (changed) ChannelStore.flush(this)
 
         val name = found.name ?: return
-        val total = ChannelStore.count(this)
-        val signature = "${found.index}|$name|$total"
+
+        // Carga la guia en segundo plano; al terminar, vuelve a mostrar el cartel
+        GuideData.ensureLoaded(this) {
+            handler.post {
+                lastSignature = ""
+                handler.removeCallbacks(scanRunnable)
+                handler.postDelayed(scanRunnable, 300)
+            }
+        }
+
+        val info = GuideData.lookup(name)
+        val cur = info?.cur
+        val nxt = info?.next
+
+        val signature = "${found.index}|$name|${cur?.title}|${GuideData.ready}"
         if (signature == lastSignature) return
         lastSignature = signature
 
         val num = found.index?.let { "$it  " } ?: ""
-        showOverlay("$num$name\nCanales guardados: $total")
+        val nowLine: String
+        var nowColor = 0xFF7CE38B.toInt()
+        when {
+            !GuideData.ready -> {
+                nowLine = "Cargando guía…"
+                nowColor = Color.LTGRAY
+            }
+            info == null -> {
+                nowLine = "Sin guía para este canal"
+                nowColor = Color.GRAY
+            }
+            cur == null -> {
+                nowLine = "Sin datos ahora"
+                nowColor = Color.GRAY
+            }
+            else -> {
+                nowLine = "Ahora  ${timeFmt.format(Date(cur.start))}–${timeFmt.format(Date(cur.stop))}  ${cur.title}"
+            }
+        }
+        val nextLine = nxt?.let { "Sigue  ${timeFmt.format(Date(it.start))}  ${it.title}" }
+
+        showBanner("$num$name", nowLine, nowColor, nextLine)
     }
 
     private fun walk(node: AccessibilityNodeInfo?, f: Found, depth: Int) {
@@ -99,18 +145,29 @@ class ProbeService : AccessibilityService() {
         }
     }
 
-    private fun showOverlay(text: String) {
+    private fun showBanner(channel: String, now: String, nowColor: Int, next: String?) {
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        if (overlay == null) {
-            val tv = TextView(this).apply {
+        // Mismo tamano de letra que eliges en la pantalla de la guia (Texto − / Texto +)
+        val scale = getSharedPreferences("guia", MODE_PRIVATE).getFloat("scale", 1.3f)
+
+        if (box == null) {
+            val c = TextView(this).apply {
                 setTextColor(Color.WHITE)
-                setBackgroundColor(0xCC000000.toInt())
-                textSize = 16f
-                maxWidth = 800
-                setPadding(24, 16, 24, 16)
+                setTypeface(typeface, Typeface.BOLD)
             }
+            val n = TextView(this)
+            val x = TextView(this).apply { setTextColor(Color.LTGRAY) }
+            val layout = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundColor(0xDD000000.toInt())
+                setPadding(32, 20, 32, 20)
+                addView(c)
+                addView(n)
+                addView(x)
+            }
+            val width = (resources.displayMetrics.widthPixels * 0.75f).toInt()
             val lp = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
+                width,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -121,12 +178,26 @@ class ProbeService : AccessibilityService() {
                 x = 40
                 y = 40
             }
-            wm.addView(tv, lp)
-            overlay = tv
+            wm.addView(layout, lp)
+            box = layout
+            tvChannel = c
+            tvNow = n
+            tvNext = x
         }
-        overlay?.text = text
-        overlay?.visibility = View.VISIBLE
+
+        tvChannel?.apply { text = channel; textSize = 28f * scale }
+        tvNow?.apply { text = now; setTextColor(nowColor); textSize = 24f * scale }
+        tvNext?.apply {
+            textSize = 20f * scale
+            if (next != null) {
+                text = next
+                visibility = View.VISIBLE
+            } else {
+                visibility = View.GONE
+            }
+        }
+        box?.visibility = View.VISIBLE
         handler.removeCallbacks(hideRunnable)
-        handler.postDelayed(hideRunnable, 4000)
+        handler.postDelayed(hideRunnable, SHOW_MS)
     }
 }
