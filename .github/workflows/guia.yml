@@ -11,7 +11,7 @@ permissions:
 jobs:
   guia:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -34,27 +34,78 @@ jobs:
           cd epg
           npm install
 
-      - name: Generar guide.xml
+      - name: Dividir channels.xml por sitio
         run: |
+          mkdir -p out/sites out/guides
+          python - <<'PY'
+          import collections
+          import xml.etree.ElementTree as ET
+          root = ET.parse("out/channels.xml").getroot()
+          by = collections.defaultdict(list)
+          for c in root.findall("channel"):
+              by[c.get("site")].append(c)
+          for site, items in by.items():
+              r = ET.Element("channels")
+              r.extend(items)
+              ET.ElementTree(r).write(f"out/sites/{site}.channels.xml",
+                                      encoding="utf-8", xml_declaration=True)
+          print(f"{len(by)} sitios")
+          PY
+
+      - name: Generar guia de cada sitio
+        run: |
+          : > out/fallos.txt
           cd epg
-          npm run grab --- --channels=../out/channels.xml --output=../out/guide.xml --days=2 --maxConnections=10
-        continue-on-error: true
+          for f in ../out/sites/*.channels.xml; do
+            s=$(basename "$f" .channels.xml)
+            echo "=== $s ==="
+            NODE_OPTIONS=--max-old-space-size=4096 timeout 20m \
+              npm run grab --- --channels="$f" --output="../out/guides/$s.xml" \
+              --days=2 --maxConnections=5 \
+              || { echo "FALLO: $s" | tee -a ../out/fallos.txt; }
+          done
+
+      - name: Unir guias
+        run: |
+          python - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+          tv = ET.Element("tv", {"generator-info-name": "epg-xuper"})
+          chs, progs = {}, []
+          for f in sorted(glob.glob("out/guides/*.xml")):
+              try:
+                  r = ET.parse(f).getroot()
+              except Exception as e:
+                  print("ilegible:", f, e)
+                  continue
+              n = len(r.findall("programme"))
+              print(f"{f}: {n} programas")
+              for c in r.findall("channel"):
+                  chs.setdefault(c.get("id"), c)
+              progs += r.findall("programme")
+          tv.extend(chs.values())
+          tv.extend(progs)
+          ET.ElementTree(tv).write("out/guide.xml", encoding="utf-8", xml_declaration=True)
+          print(f"TOTAL: {len(chs)} canales, {len(progs)} programas")
+          PY
 
       - name: Revisar resultado
         run: |
           if [ ! -s out/guide.xml ]; then
             echo "No se genero guide.xml"; exit 1
           fi
-          CANALES=$(grep -c "<channel " out/guide.xml || true)
-          PROGRAMAS=$(grep -c "<programme " out/guide.xml || true)
-          echo "Canales en guide.xml: $CANALES"
-          echo "Programas en guide.xml: $PROGRAMAS"
+          CANALES=$(grep -o "<channel " out/guide.xml | wc -l)
+          PROGRAMAS=$(grep -o "<programme " out/guide.xml | wc -l)
+          FALLOS=$(cat out/fallos.txt | tr '\n' ' ')
           {
             echo '```'
             echo "Canales en guide.xml: $CANALES"
             echo "Programas en guide.xml: $PROGRAMAS"
+            echo "Sitios con fallo: ${FALLOS:-ninguno}"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY" | tail -6
+          if [ "$PROGRAMAS" -eq 0 ]; then exit 1; fi
           gzip -kf out/guide.xml
 
       - uses: actions/upload-artifact@v4
@@ -63,6 +114,7 @@ jobs:
           name: guia-resultados
           path: |
             out/guide.xml.gz
+            out/fallos.txt
             out/reporte_canales.csv
             out/mapa_canales.json
             out/channels.xml
