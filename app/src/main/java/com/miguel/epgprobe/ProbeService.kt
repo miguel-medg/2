@@ -156,14 +156,14 @@ class ProbeService : AccessibilityService() {
                 setTypeface(typeface, Typeface.BOLD)
             }
             val n = TextView(this)
-            val x = TextView(this).apply { setTextColor(Color.LTGRAY) }
+            val nx = TextView(this).apply { setTextColor(Color.LTGRAY) }
             val layout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setBackgroundColor(0xDD000000.toInt())
                 setPadding(32, 20, 32, 20)
                 addView(c)
                 addView(n)
-                addView(x)
+                addView(nx)
             }
             val width = (resources.displayMetrics.widthPixels * 0.75f).toInt()
             val lp = WindowManager.LayoutParams(
@@ -182,7 +182,7 @@ class ProbeService : AccessibilityService() {
             box = layout
             tvChannel = c
             tvNow = n
-            tvNext = x
+            tvNext = nx
         }
 
         tvChannel?.apply { text = channel; textSize = 28f * scale }
