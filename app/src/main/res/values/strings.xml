@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">EPG Probe</string>
+    <string name="service_label">EPG Probe</string>
+    <string name="service_desc">Lee el nombre del canal que muestra Xuper TV para guardar la lista de canales y mostrar el canal actual.</string>
+</resources>
