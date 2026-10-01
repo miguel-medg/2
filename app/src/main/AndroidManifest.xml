@@ -23,6 +23,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".GuideActivity"
+            android:exported="false" />
+
         <service
             android:name=".ProbeService"
             android:exported="true"
