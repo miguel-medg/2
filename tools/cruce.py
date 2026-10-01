@@ -65,6 +65,10 @@ PERMITIDOS = {
     "TVCancaoNova.br",
 }
 
+# Sitios que en las pruebas respondieron sin ningun programa: se evitan al elegir fuente
+SITIOS_SIN_DATOS = {"tvtv.us", "tvprofil.com", "meuguia.tv",
+                    "epg.iptvx.one", "programacion-tv.elpais.com"}
+
 # Nombre limpio de Xuper -> nombre limpio con el que buscar en iptv-org
 ALIAS = {
     "azteca 1": "azteca uno",
@@ -189,6 +193,11 @@ def main():
         by_channel[cid].append(g)
         site_count[g.get("site")] += 1
 
+    def pick(cid):
+        """Fuente de guia para un canal: la que mas canales cubre, evitando sitios sin datos."""
+        ok = [g for g in by_channel[cid] if g.get("site") not in SITIOS_SIN_DATOS]
+        return max(ok or by_channel[cid], key=lambda x: site_count[x.get("site")])
+
     # candidatos: nombre y nombres alternos de canales que tienen guia
     choices, meta = [], []
     chan_name = {}
@@ -300,7 +309,7 @@ def main():
             continue
         usados.add(cid)
         # una sola fuente por canal: la que mas canales cubre
-        g = max(by_channel[cid], key=lambda x: site_count[x.get("site")])
+        g = pick(cid)
         lang = g.get("lang") or "es"
         esc = lambda t: (t or "").replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
         xml.append(
@@ -321,8 +330,11 @@ def main():
     resumen.append(f"Canales distintos en channels.xml: {len(usados)}")
     resumen.append("Fuentes usadas: " + ", ".join(
         f"{s} ({n})" for s, n in Counter(
-            max(by_channel[c], key=lambda x: site_count[x.get('site')]).get('site') for c in usados
+            pick(c).get('site') for c in usados
         ).most_common()))
+    solo_malas = sorted(c for c in usados if pick(c).get("site") in SITIOS_SIN_DATOS)
+    if solo_malas:
+        resumen.append("Canales cuya unica fuente es un sitio sin datos: " + "; ".join(solo_malas))
     if override_fallidos:
         resumen.append("Correcciones manuales sin id valido (quedaron sin guia): "
                        + "; ".join(override_fallidos))
