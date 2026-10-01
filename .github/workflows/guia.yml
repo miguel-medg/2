@@ -1,0 +1,77 @@
+name: Generar guia
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * *"   # todos los dias a las 09:00 UTC
+
+permissions:
+  contents: write
+
+jobs:
+  guia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cruce de canales
+        run: |
+          pip install rapidfuzz
+          python tools/cruce.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Descargar iptv-org/epg
+        run: |
+          git clone --depth 1 -b master https://github.com/iptv-org/epg.git epg
+          cd epg
+          npm install
+
+      - name: Generar guide.xml
+        run: |
+          cd epg
+          npm run grab --- --channels=../out/channels.xml --output=../out/guide.xml --days=2 --maxConnections=10
+        continue-on-error: true
+
+      - name: Revisar resultado
+        run: |
+          if [ ! -s out/guide.xml ]; then
+            echo "No se genero guide.xml"; exit 1
+          fi
+          CANALES=$(grep -c "<channel " out/guide.xml || true)
+          PROGRAMAS=$(grep -c "<programme " out/guide.xml || true)
+          echo "Canales en guide.xml: $CANALES"
+          echo "Programas en guide.xml: $PROGRAMAS"
+          {
+            echo '```'
+            echo "Canales en guide.xml: $CANALES"
+            echo "Programas en guide.xml: $PROGRAMAS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          gzip -kf out/guide.xml
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guia-resultados
+          path: |
+            out/guide.xml.gz
+            out/reporte_canales.csv
+            out/mapa_canales.json
+            out/channels.xml
+            out/resumen.txt
+
+      - name: Publicar en el release "guia"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view guia >/dev/null 2>&1 || \
+            gh release create guia --title "Guia EPG" --notes "Guia XMLTV generada automaticamente"
+          gh release upload guia out/guide.xml.gz out/mapa_canales.json --clobber
