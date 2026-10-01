@@ -24,7 +24,7 @@ class MainActivity : Activity() {
         }
 
         val help = TextView(this).apply {
-            textSize = 16f
+            textSize = 22f
             text = "1) Pulsa \"Abrir accesibilidad\" y activa EPG Probe.\n" +
                 "2) Abre Xuper TV y cambia de canal.\n" +
                 "3) Mira el recuadro arriba a la izquierda (dura 8 s).\n" +
@@ -65,10 +65,12 @@ class MainActivity : Activity() {
         }
 
         logView = TextView(this).apply {
-            textSize = 13f
+            textSize = 18f
             isFocusable = true
         }
         val scroll = ScrollView(this).apply { addView(logView) }
+
+        listOf(guideBtn, openBtn, refreshBtn, clearBtn).forEach { it.textSize = 22f }
 
         layout.addView(guideBtn)
         layout.addView(help)
