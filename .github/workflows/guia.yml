@@ -24,6 +24,9 @@ jobs:
           pip install rapidfuzz
           python tools/cruce.py
 
+      - name: Guia Latino (EPGTalk)
+        run: python tools/latino.py
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -116,6 +119,7 @@ jobs:
             out/guide.xml.gz
             out/fallos.txt
             out/reporte_canales.csv
+            out/reporte_latino.csv
             out/mapa_canales.json
             out/channels.xml
             out/resumen.txt
