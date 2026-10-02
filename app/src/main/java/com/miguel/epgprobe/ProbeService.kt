@@ -40,6 +40,7 @@ class ProbeService : AccessibilityService() {
     private var tvChannel: TextView? = null
     private var tvNow: TextView? = null
     private var tvNext: TextView? = null
+    private var barNow: ProgressBar? = null
     private var lastSignature = ""
 
     private val scanRunnable = Runnable { scanScreen() }
@@ -152,7 +153,7 @@ class ProbeService : AccessibilityService() {
         }
     }
 
-    private fun showBanner(channel: String, now: String, nowColor: Int, next: String?) {
+        private fun showBanner(channel: String, now: String, nowColor: Int, progress: Int, next: String?) {
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
         // Mismo tamano de letra que eliges en la pantalla de la guia (Texto − / Texto +)
         val scale = getSharedPreferences("guia", MODE_PRIVATE).getFloat("scale", 1.3f)
@@ -163,6 +164,11 @@ class ProbeService : AccessibilityService() {
                 setTypeface(typeface, Typeface.BOLD)
             }
             val n = TextView(this)
+            val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 1000
+                progressTintList = ColorStateList.valueOf(0xFF7CE38B.toInt())
+                progressBackgroundTintList = ColorStateList.valueOf(0x44FFFFFF)
+            }
             val nx = TextView(this).apply { setTextColor(Color.LTGRAY) }
             val layout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -170,6 +176,12 @@ class ProbeService : AccessibilityService() {
                 setPadding(32, 20, 32, 20)
                 addView(c)
                 addView(n)
+                addView(
+                    bar,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 16
+                    ).apply { topMargin = 8; bottomMargin = 8 }
+                )
                 addView(nx)
             }
             val width = (resources.displayMetrics.widthPixels * 0.75f).toInt()
@@ -189,11 +201,20 @@ class ProbeService : AccessibilityService() {
             box = layout
             tvChannel = c
             tvNow = n
+            barNow = bar
             tvNext = nx
         }
 
         tvChannel?.apply { text = channel; textSize = 28f * scale }
         tvNow?.apply { text = now; setTextColor(nowColor); textSize = 24f * scale }
+        barNow?.apply {
+            if (progress >= 0) {
+                this.progress = progress
+                visibility = View.VISIBLE
+            } else {
+                visibility = View.GONE
+            }
+        }
         tvNext?.apply {
             textSize = 20f * scale
             if (next != null) {
