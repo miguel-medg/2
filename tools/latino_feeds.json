@@ -1,4 +1,16 @@
 {
-  "_ayuda": "Canal de Xuper (nombre EXACTO) -> numero de lineup de la copia correcta, por ejemplo I1008. Mira reporte_latino.csv, columna programa_ahora, y elige la copia que coincide con tu tele.",
-  "Cinemax HD": "I1008"
+  "_ayuda": "Canal de Xuper (nombre EXACTO) -> numero de lineup de la copia correcta, por ejemplo I173. Mira reporte_latino.csv, columna programa_ahora, y elige la copia que coincide con tu tele.",
+  "Cinemax HD": "I173",
+  "AXN HD": "I25",
+  "CINECANAL HD": "I163",
+  "ST☆R HD": "I585",
+  "ST☆R HD+": "I585",
+  "FX Central HD": "I354",
+  "Sony Central HD": "I141",
+  "De Pelicula HD": "I208",
+  "TNT SERIES MX HD": "I708",
+  "TNT SERIES COL HD": "I706",
+  "TNT FHD": "I708",
+  "HBO 2 HD": "I390",
+  "E! HD": "I274"
 }
