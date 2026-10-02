@@ -128,7 +128,12 @@ class ProbeService : AccessibilityService() {
         }
         val nextLine = nxt?.let { "Sigue  ${timeFmt.format(Date(it.start))}  ${it.title}" }
 
-        showBanner("$num$name", nowLine, nowColor, nextLine)
+                val pct = if (cur != null && cur.stop > cur.start) {
+            ((System.currentTimeMillis() - cur.start) * 1000 / (cur.stop - cur.start))
+                .toInt().coerceIn(0, 1000)
+        } else -1
+
+        showBanner("$num$name", nowLine, nowColor, pct, nextLine)
     }
 
     private fun walk(node: AccessibilityNodeInfo?, f: Found, depth: Int) {
