@@ -1,5 +1,7 @@
 package com.miguel.epgprobe
 
+import android.content.res.ColorStateList
+import android.widget.ProgressBar
 import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
