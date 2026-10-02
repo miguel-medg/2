@@ -74,7 +74,7 @@ FORCE = {
     "HBO 2 HD": "HBO 2",
     "E! HD": "E! Entertainment TV",
     # No son la senal de Mexico de la guia: mejor sin guia que una guia equivocada
-    "STAR CHANNEL HD": None,            # esta en ruso
+        "STAR CHANNEL HD": "Star Channel",          
     "Sony HD": None,                    # senal en ingles, no esta en la guia
     "TNT PERU HD": None,
     "TNT CHILE HD": None,
