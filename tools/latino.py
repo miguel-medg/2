@@ -61,6 +61,32 @@ ALIAS = {
 FORCE = {
     "Latina HD": None,          # es el canal de Peru, no "ALATINA"
     "Latina HD+": None,
+    # --- corregidos con lo que se vio en la tele (1 oct, tarde) ---
+    "AXN HD": "AMC",                    # el canal "AXN" de Xuper en realidad es AMC
+    "FX Central HD": "FX",
+    "Sony Central HD": "Canal Sony",
+    "ST☆R HD": "Star Channel",
+    "ST☆R HD+": "Star Channel",
+    "TNT SERIES MX HD": "TNT Series",
+    "TNT SERIES COL HD": "TNT Series",
+    "TNT FHD": "TNT Series",            # el FHD es TNT Series, no TNT
+    "De Pelicula HD": "De Película",
+    "HBO 2 HD": "HBO 2",
+    "E! HD": "E! Entertainment TV",
+    # No son la senal de Mexico de la guia: mejor sin guia que una guia equivocada
+    "STAR CHANNEL HD": None,            # esta en ruso
+    "Sony HD": None,                    # senal en ingles, no esta en la guia
+    "TNT PERU HD": None,
+    "TNT CHILE HD": None,
+    "UNIVERSAL PREMIER HD": None,
+    "UNIVERSAL CINEMA HD": None,
+    "UNIVERSAL COMEDY HD": None,
+    "UNIVERSAL CRIME HD": None,
+    "HOLLYWOOD HD": None,               # senal de Espana
+    "TL Novelas HD": None,
+    "TLNOVELAS HD": None,
+    "De Pelicula Plus FHD": None,
+    "NEOX HD": None,
     "CANAL 5 HD": "XHGC",       # Canal 5 de Mexico (siglas XHGC)
     "Azteca 7 HD": "XHIMT",     # Canal 7 de TV Azteca (siglas XHIMT)
     "CANAL ONCE MX HD": "Once",
@@ -182,6 +208,8 @@ def main():
 
     # ---- pasada 2: programas de las estaciones candidatas ----
     ahora = datetime.now(timezone.utc)
+    if os.environ.get("LATINO_NOW"):   # solo para pruebas: AAAAMMDDHHMMSS en UTC
+        ahora = datetime.strptime(os.environ["LATINO_NOW"], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
     corte = (ahora - timedelta(hours=3)).strftime("%Y%m%d%H%M%S")
     now_s = ahora.strftime("%Y%m%d%H%M%S")
     fin_huella = (ahora + timedelta(hours=36)).strftime("%Y%m%d%H%M%S")
@@ -277,6 +305,10 @@ def main():
             mapa = json.load(f)
     # Latino tiene prioridad sobre el cruce de iptv-org
     reemplazados = set()
+    # Los canales descartados a mano quedan SIN guia (no se deja la de iptv-org, que suele ser erronea)
+    for x, v in FORCE.items():
+        if v is None and x in mapa:
+            reemplazados.add(mapa.pop(x))
     for x, cid in elegidas.items():
         if x in mapa and mapa[x] != cid:
             reemplazados.add(mapa[x])
