@@ -59,6 +59,10 @@ ALIAS = {
 # Nombre EXACTO en Xuper -> nombre de la estacion en la guia (o None = no usar esta fuente).
 # Revisa estos con tu tele: son deducciones por nombre o por siglas de la estacion.
 FORCE = {
+      "ST☆R Central HD": "Star Channel",
+    "ST☆R Central FHD": "Star Channel",
+    "HBO2 Central HD": "HBO 2",
+    "Cartoon Network MX HD": None,
     "Latina HD": None,          # es el canal de Peru, no "ALATINA"
     "Latina HD+": None,
     # --- corregidos con lo que se vio en la tele (1 oct, tarde) ---
