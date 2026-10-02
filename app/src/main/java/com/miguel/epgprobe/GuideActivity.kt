@@ -301,7 +301,7 @@ class GuideActivity : Activity() {
                 setTypeface(typeface, Typeface.BOLD)
                 setTextColor(Color.WHITE)
             })
-            box.addView(TextView(this@GuideActivity).apply {
+                        box.addView(TextView(this@GuideActivity).apply {
                 textSize = 22f * scale
                 if (cur != null) {
                     text = "Ahora  ${timeFmt.format(Date(cur.start))}–${timeFmt.format(Date(cur.stop))}  ${cur.title}"
@@ -311,6 +311,21 @@ class GuideActivity : Activity() {
                     setTextColor(Color.GRAY)
                 }
             })
+            if (cur != null && cur.stop > cur.start) {
+                val pct = ((now - cur.start) * 1000 / (cur.stop - cur.start))
+                    .toInt().coerceIn(0, 1000)
+                box.addView(
+                    ProgressBar(this@GuideActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                        max = 1000
+                        progress = pct
+                        progressTintList = ColorStateList.valueOf(0xFF7CE38B.toInt())
+                        progressBackgroundTintList = ColorStateList.valueOf(0x33FFFFFF)
+                    },
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 14
+                    ).apply { topMargin = 8; bottomMargin = 4 }
+                )
+            }
             if (nxt != null) {
                 box.addView(TextView(this@GuideActivity).apply {
                     textSize = 20f * scale
