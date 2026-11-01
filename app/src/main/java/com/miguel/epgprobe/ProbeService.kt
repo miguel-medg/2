@@ -1,5 +1,7 @@
 package com.miguel.epgprobe
 
+import android.content.Intent
+import android.os.Build
 import android.content.res.ColorStateList
 import android.widget.ProgressBar
 import android.accessibilityservice.AccessibilityService
@@ -51,7 +53,14 @@ class ProbeService : AccessibilityService() {
         var index: String? = null
         val listNames = ArrayList<String>()
     }
-
+override fun onServiceConnected() {
+    super.onServiceConnected()
+    try {
+        val i = Intent(this, WatchdogService::class.java)
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
+    } catch (_: Exception) {
+    }
+}
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.packageName?.toString() != XUPER_PKG) return
         handler.removeCallbacks(scanRunnable)
